@@ -4,13 +4,12 @@ const photoRotations = {
   photo2: 0,
   photo3: 0,
 };
-
 // Cache do Tesseract worker para melhor performance
 let tesseractWorker = null;
 
 // Configurações da API do Google
 const GOOGLE_API_KEY = 'AIzaSyAQorqgDbL8SkEEKbxArrkUrW90Bo3HElA';
-const GOOGLE_CLIENT_ID = 'S413639391505-ju79cikoccl8n4ke361ibv0dtd9q4iji.apps.googleusercontent.com'; // Você precisa obter isso no Google Cloud Console
+const GOOGLE_CLIENT_ID = '413639391505-ju79cikoccl8n4ke361ibv0dtd9q4iji.apps.googleusercontent.com'; // Você precisa obter isso no Google Cloud Console
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
 
 // Inicializa o worker do Tesseract de forma lazy
@@ -82,7 +81,7 @@ async function triggerGooglePhotos(photoNumber) {
       .addView(google.picker.ViewId.PHOTOS)
       .addView(google.picker.ViewId.PHOTO_ALBUMS)
       .addView(google.picker.ViewId.PHOTO_UPLOAD)
-      .setOAuthToken(gapi.auth.getToken().access_token)
+      setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
       .setDeveloperKey(GOOGLE_API_KEY)
       .setCallback((data) => {
         if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
