@@ -42,9 +42,9 @@ async function loadPhoto(input, photoId) {
     photoRotations[photoId] = 0;
     
     // Verificar se a rotação automática está habilitada
-    const autoRotateEnabled = document.getElementById('autoRotateToggle').checked;
+    const autoRotateEnabled = document.getElementById('autoRotateToggle');
     
-    if (autoRotateEnabled) {
+    if (autoRotateEnabled && autoRotateEnabled.checked) {
       // Usar setTimeout para não bloquear a interface
       setTimeout(() => {
         detectAndRotateImage(photoId, e.target.result);
@@ -336,6 +336,98 @@ function saveReport() {
   });
 }
 
+// ========== FUNÇÕES DE CÓPIA DE TEXTO ==========
+
+// Função para copiar texto
+function copyText(button, textId) {
+  const textElement = document.getElementById(textId);
+  const text = textElement.textContent.trim();
+  
+  // Tentar copiar usando a API moderna
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      showCopySuccess(button);
+    }).catch(() => {
+      fallbackCopy(text, button);
+    });
+  } else {
+    // Fallback para navegadores mais antigos
+    fallbackCopy(text, button);
+  }
+}
+
+// Função de fallback para cópia (navegadores antigos)
+function fallbackCopy(text, button) {
+  // Criar elemento temporário para seleção
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  document.body.appendChild(textArea);
+  
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      showCopySuccess(button);
+    } else {
+      showCopyError();
+    }
+  } catch (err) {
+    console.error('Erro ao copiar texto:', err);
+    showCopyError();
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+// Mostrar sucesso na cópia
+function showCopySuccess(button) {
+  // Animação do botão
+  const originalText = button.querySelector('.copy-text').textContent;
+  button.classList.add('copied');
+  button.querySelector('.copy-text').textContent = 'Copiado!';
+  button.querySelector('.copy-icon').textContent = '✅';
+  
+  // Mostrar notificação
+  showNotification('✅ Texto copiado com sucesso!', 'success');
+  
+  // Restaurar botão após 2 segundos
+  setTimeout(() => {
+    button.classList.remove('copied');
+    button.querySelector('.copy-text').textContent = originalText;
+    button.querySelector('.copy-icon').textContent = '📋';
+  }, 2000);
+}
+
+// Mostrar erro na cópia
+function showCopyError() {
+  showNotification('❌ Erro ao copiar texto. Tente novamente.', 'error');
+}
+
+// Mostrar notificação
+function showNotification(message, type = 'success') {
+  const notification = document.getElementById('copyNotification');
+  notification.textContent = message;
+  notification.className = 'copy-notification show';
+  
+  if (type === 'error') {
+    notification.style.background = '#f44336';
+  } else {
+    notification.style.background = '#4CAF50';
+  }
+  
+  // Esconder notificação após 3 segundos
+  setTimeout(() => {
+    notification.classList.remove('show');
+  }, 3000);
+}
+
+// ========== INICIALIZAÇÃO ==========
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
   // Esconder loading overlays
@@ -348,10 +440,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Pré-carregar o worker do Tesseract em background (opcional)
   setTimeout(() => {
-    if (document.getElementById('autoRotateToggle').checked) {
+    const autoRotateToggle = document.getElementById('autoRotateToggle');
+    if (autoRotateToggle && autoRotateToggle.checked) {
       initTesseractWorker().then(() => {
         console.log('Tesseract worker pré-carregado');
       });
     }
   }, 2000);
+  
+  console.log('Sistema de registros fotográficos carregado');
+  console.log('Sistema de textos para cópia carregado');
 });

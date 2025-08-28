@@ -75,6 +75,50 @@
 
       <button onclick="saveReport()" class="save-btn">Salvar Relatório</button>
     </div>
+
+    <!-- Seção de textos para cópia -->
+    <div class="copy-texts-section">
+      <div class="copy-texts-header">
+        TEXTOS PADRONIZADOS
+      </div>
+      
+      <div class="copy-texts-content">
+        <!-- Item 1: Calibração Vencida -->
+        <div class="text-item">
+          <div class="text-item-header">
+            <div class="text-item-title">Calibração Vencida</div>
+            <button class="copy-btn" onclick="copyText(this, 'calibracao-text')">
+              <span class="copy-icon">📋</span>
+              <span class="copy-text">Copiar</span>
+            </button>
+          </div>
+          <div class="text-content" id="calibracao-text">
+            Foi realizado a calibração da válvula de segurança conforme os procedimentos internos normativos, utilizando equipamentos devidamente calibrados e rastreados.
+          </div>
+        </div>
+
+        <!-- Item 2: Observações Apresentadas -->
+        <div class="text-item">
+          <div class="text-item-header">
+            <div class="text-item-title">Observações Apresentadas</div>
+            <button class="copy-btn" onclick="copyText(this, 'observacoes-text')">
+              <span class="copy-icon">📋</span>
+              <span class="copy-text">Copiar</span>
+            </button>
+          </div>
+          <div class="text-content" id="observacoes-text">
+            Os resultados obtidos confirmam que a válvula atende aos requisitos especificados para seu pleno funcionamento e segurança operacional.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notificação de cópia -->
+    <div id="copyNotification" class="copy-notification">
+      ✅ Texto copiado com sucesso!
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
