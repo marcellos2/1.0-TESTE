@@ -4,19 +4,13 @@ const photoRotations = {
   photo2: 0,
   photo3: 0,
 };
-
 // Cache do Tesseract worker para melhor performance
 let tesseractWorker = null;
 
 // Configurações da API do Google
 const GOOGLE_API_KEY = 'AIzaSyAQorqgDbL8SkEEKbxArrkUrW90Bo3HElA';
-const GOOGLE_CLIENT_ID = '413639391505-ju79cikoccl8n4ke361ibv0dtd9q4iji.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '413639391505-ju79cikoccl8n4ke361ibv0dtd9q4iji.apps.googleusercontent.com'; // Você precisa obter isso no Google Cloud Console
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
-const DISCOVERY_DOCS = ['https://photoslibrary.googleapis.com/$discovery/rest?version=v1'];
-
-// Estado da autenticação
-let isGoogleApiLoaded = false;
-let isUserSignedIn = false;
 
 // Inicializa o worker do Tesseract de forma lazy
 async function initTesseractWorker() {
@@ -42,214 +36,107 @@ async function initTesseractWorker() {
 // Inicializa a API do Google
 function initGoogleAPI() {
   return new Promise((resolve, reject) => {
-    if (typeof gapi === 'undefined') {
-      reject(new Error('Google API não carregada'));
-      return;
-    }
-
     gapi.load('client:auth2', () => {
       gapi.client.init({
         apiKey: GOOGLE_API_KEY,
         clientId: GOOGLE_CLIENT_ID,
-        discoveryDocs: DISCOVERY_DOCS,
+        discoveryDocs: ['https://photoslibrary.googleapis.com/$discovery/rest?version=v1'],
         scope: GOOGLE_SCOPES
       }).then(() => {
-        const authInstance = gapi.auth2.getAuthInstance();
-        isUserSignedIn = authInstance.isSignedIn.get();
-        
-        updateAuthButton();
-        isGoogleApiLoaded = true;
-        
-        console.log('Google API inicializada com sucesso');
+        console.log('Google API inicializada');
         resolve();
       }).catch(error => {
         console.error('Erro ao inicializar Google API:', error);
-        updateStatusMessage('Erro ao conectar com Google', 'error');
         reject(error);
       });
     });
   });
 }
 
-// Atualiza o botão de autenticação
-function updateAuthButton() {
-  const statusText = document.getElementById('statusText');
-  const authButton = document.getElementById('authButton');
-  const googleStatus = document.getElementById('googleStatus');
-  
-  if (isUserSignedIn) {
-    statusText.textContent = '✅ Google Fotos conectado';
-    authButton.style.display = 'none';
-    googleStatus.className = 'google-status connected';
-  } else {
-    statusText.textContent = '⚠️ Google Fotos desconectado';
-    authButton.style.display = 'inline-block';
-    googleStatus.className = 'google-status disconnected';
-  }
+// Verifica se o usuário está autenticado
+function isUserAuthenticated() {
+  return gapi.auth2.getAuthInstance().isSignedIn.get();
 }
 
-// Atualiza mensagem de status
-function updateStatusMessage(message, type = 'info') {
-  const statusText = document.getElementById('statusText');
-  const googleStatus = document.getElementById('googleStatus');
-  
-  statusText.textContent = message;
-  googleStatus.className = `google-status ${type}`;
-}
-
-// Manipula o clique no botão de autenticação
-async function handleAuthClick() {
-  try {
-    if (!isGoogleApiLoaded) {
-      await initGoogleAPI();
-    }
-    
-    const authInstance = gapi.auth2.getAuthInstance();
-    await authInstance.signIn();
-    
-    isUserSignedIn = true;
-    updateAuthButton();
-    updateStatusMessage('✅ Google Fotos conectado', 'connected');
-  } catch (error) {
-    console.error('Erro na autenticação:', error);
-    updateStatusMessage('Erro na autenticação', 'error');
-  }
+// Autentica o usuário
+function authenticateUser() {
+  return gapi.auth2.getAuthInstance().signIn();
 }
 
 // Abre o seletor do Google Fotos
 async function triggerGooglePhotos(photoNumber) {
   try {
-    // Verifica se a API está carregada e o usuário autenticado
-    if (!isGoogleApiLoaded) {
+    // Inicializa a API se ainda não foi inicializada
+    if (!gapi.client) {
       await initGoogleAPI();
     }
-    
-    if (!isUserSignedIn) {
-      await handleAuthClick();
-      return;
+
+    // Autentica o usuário se necessário
+    if (!isUserAuthenticated()) {
+      await authenticateUser();
     }
 
-    // Busca fotos recentes do usuário
-    const photos = await getRecentPhotos();
+    // Cria e abre o seletor do Google Fotos
+    const googlePhotosPicker = new google.picker.PickerBuilder()
+      .addView(google.picker.ViewId.PHOTOS)
+      .addView(google.picker.ViewId.PHOTO_ALBUMS)
+      .addView(google.picker.ViewId.PHOTO_UPLOAD)
+      setOAuthToken(gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token)
+      .setDeveloperKey(GOOGLE_API_KEY)
+      .setCallback((data) => {
+        if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+          const doc = data[google.picker.Response.DOCUMENTS][0];
+          const photoId = doc[google.picker.Document.ID];
+          loadPhotoFromGoogle(photoId, `photo${photoNumber}`);
+        }
+      })
+      .build();
     
-    if (photos.length === 0) {
-      alert('Nenhuma foto encontrada no Google Fotos.');
-      return;
-    }
-
-    // Mostra modal com seleção de fotos
-    showPhotoSelector(photos, photoNumber);
-    
+    googlePhotosPicker.setVisible(true);
   } catch (error) {
     console.error('Erro ao acessar Google Fotos:', error);
-    alert('Erro ao acessar Google Fotos. Tente novamente.');
+    alert('Erro ao acessar Google Fotos. Verifique o console para mais detalhes.');
   }
 }
 
-// Busca fotos recentes do Google Fotos
-async function getRecentPhotos(pageSize = 20) {
+// Carrega uma foto do Google Fotos
+async function loadPhotoFromGoogle(photoId, targetPhotoId) {
   try {
-    const response = await gapi.client.photoslibrary.mediaItems.list({
-      pageSize: pageSize,
-      filters: {
-        mediaTypeFilter: {
-          mediaTypes: ['PHOTO']
-        }
-      }
-    });
-    
-    return response.result.mediaItems || [];
-  } catch (error) {
-    console.error('Erro ao buscar fotos:', error);
-    return [];
-  }
-}
-
-// Mostra modal com seleção de fotos
-function showPhotoSelector(photos, photoNumber) {
-  // Remove modal existente se houver
-  const existingModal = document.getElementById('photoModal');
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  // Cria modal
-  const modal = document.createElement('div');
-  modal.id = 'photoModal';
-  modal.className = 'photo-modal';
-  
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Selecione uma foto do Google Fotos</h3>
-        <button class="close-modal" onclick="closePhotoModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="photo-grid" id="photoGrid">
-          ${photos.map((photo, index) => `
-            <div class="photo-item" onclick="selectGooglePhoto('${photo.id}', ${photoNumber})">
-              <img src="${photo.baseUrl}=w200-h200-c" alt="Foto ${index + 1}">
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  modal.style.display = 'flex';
-}
-
-// Fecha modal de seleção
-function closePhotoModal() {
-  const modal = document.getElementById('photoModal');
-  if (modal) {
-    modal.remove();
-  }
-}
-
-// Seleciona foto do Google
-async function selectGooglePhoto(photoId, photoNumber) {
-  try {
-    closePhotoModal();
-    
-    const targetPhotoId = `photo${photoNumber}`;
     showLoading(targetPhotoId);
     
-    // Obtém a foto em alta resolução
+    // Obtém a URL da foto em alta resolução
     const response = await gapi.client.photoslibrary.mediaItems.get({
       mediaItemId: photoId
     });
     
     const mediaItem = response.result;
-    const highResUrl = `${mediaItem.baseUrl}=w1600-h1200`;
+    const photoUrl = `${mediaItem.baseUrl}=w1600-h1200`; // Tamanho ajustável
     
-    // Carrega a imagem no elemento
+    // Carrega a imagem
     const imgElement = document.getElementById(targetPhotoId);
+    imgElement.src = photoUrl;
     
-    // Aguarda o carregamento da imagem
-    await new Promise((resolve, reject) => {
-      imgElement.onload = resolve;
-      imgElement.onerror = reject;
-      imgElement.src = highResUrl;
-    });
-    
-    // Reseta rotação
+    // Resetar a rotação ao carregar uma nova foto
     photoRotations[targetPhotoId] = 0;
     
-    console.log(`Foto carregada do Google: ${targetPhotoId}`);
+    // Verificar se a rotação automática está habilitada
+    const autoRotateEnabled = document.getElementById('autoRotateToggle');
     
+    if (autoRotateEnabled && autoRotateEnabled.checked) {
+      // Usar setTimeout para não bloquear a interface
+      setTimeout(() => {
+        detectAndRotateImage(targetPhotoId, photoUrl);
+      }, 100);
+    }
   } catch (error) {
     console.error('Erro ao carregar foto do Google:', error);
-    alert('Erro ao carregar a foto selecionada.');
+    alert('Erro ao carregar foto do Google Fotos.');
   } finally {
-    hideLoading(`photo${photoNumber}`);
+    hideLoading(targetPhotoId);
   }
 }
 
-// ========== FUNÇÕES ORIGINAIS ==========
-
-// Carrega as fotos nos respectivos blocos (arquivo local)
+// Carrega as fotos nos respectivos blocos
 async function loadPhoto(input, photoId) {
   if (!input.files || !input.files.length) return;
   
@@ -262,9 +149,243 @@ async function loadPhoto(input, photoId) {
     
     // Resetar a rotação ao carregar uma nova foto
     photoRotations[photoId] = 0;
+    
+    // Verificar se a rotação automática está habilitada
+    const autoRotateEnabled = document.getElementById('autoRotateToggle');
+    
+    if (autoRotateEnabled && autoRotateEnabled.checked) {
+      // Usar setTimeout para não bloquear a interface
+      setTimeout(() => {
+        detectAndRotateImage(photoId, e.target.result);
+      }, 100);
+    }
   };
   
   reader.readAsDataURL(file);
+}
+
+// Detecta a orientação do texto e rotaciona automaticamente (versão otimizada)
+async function detectAndRotateImage(photoId, imageSrc) {
+  try {
+    showLoading(photoId);
+    showProcessingStatus('Analisando orientação da imagem...');
+    
+    // Usar uma versão reduzida da imagem para análise mais rápida
+    const resizedImage = await resizeImageForAnalysis(imageSrc, 400);
+    
+    // Testar apenas rotações mais prováveis primeiro (0° e 180°)
+    const quickTest = await quickOrientationTest(resizedImage);
+    
+    if (quickTest.confidence > 0.7) {
+      // Se a confiança for alta, usar o resultado rápido
+      if (quickTest.angle !== 0) {
+        await applyRotation(photoId, imageSrc, quickTest.angle);
+      }
+    } else {
+      // Se a confiança for baixa, fazer teste completo
+      const fullTest = await fullOrientationTest(resizedImage);
+      if (fullTest.angle !== 0 && fullTest.confidence > 0.4) {
+        await applyRotation(photoId, imageSrc, fullTest.angle);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Erro na detecção automática:', error);
+  } finally {
+    hideLoading(photoId);
+    hideProcessingStatus();
+  }
+}
+
+// Teste rápido de orientação (apenas 0° e 180°)
+async function quickOrientationTest(imageSrc) {
+  const angles = [0, 180];
+  const results = [];
+  
+  for (let angle of angles) {
+    const rotatedImage = await rotateImageForAnalysis(imageSrc, angle);
+    const confidence = await analyzeTextOrientation(rotatedImage, true); // modo rápido
+    results.push({ angle, confidence });
+  }
+  
+  return results.reduce((prev, current) => 
+    (prev.confidence > current.confidence) ? prev : current
+  );
+}
+
+// Teste completo de orientação (todas as 4 rotações)
+async function fullOrientationTest(imageSrc) {
+  const angles = [0, 90, 180, 270];
+  const results = [];
+  
+  for (let angle of angles) {
+    const rotatedImage = await rotateImageForAnalysis(imageSrc, angle);
+    const confidence = await analyzeTextOrientation(rotatedImage, false); // modo completo
+    results.push({ angle, confidence });
+  }
+  
+  return results.reduce((prev, current) => 
+    (prev.confidence > current.confidence) ? prev : current
+  );
+}
+
+// Redimensiona imagem para análise mais rápida
+function resizeImageForAnalysis(imageSrc, maxWidth) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Calcular novo tamanho mantendo proporção
+      const ratio = Math.min(maxWidth / img.naturalWidth, maxWidth / img.naturalHeight);
+      const newWidth = img.naturalWidth * ratio;
+      const newHeight = img.naturalHeight * ratio;
+      
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = imageSrc;
+  });
+}
+
+// Aplica a rotação final na imagem
+async function applyRotation(photoId, originalImageSrc, angle) {
+  if (angle !== 0) {
+    const rotatedImage = await rotateImageForAnalysis(originalImageSrc, angle);
+    document.getElementById(photoId).src = rotatedImage;
+    photoRotations[photoId] = angle;
+    console.log(`Rotação aplicada: ${angle}° para ${photoId}`);
+  }
+}
+
+// Rotaciona uma imagem para análise
+function rotateImageForAnalysis(imageSrc, angle) {
+  return new Promise((resolve) => {
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      let canvasWidth = tempImg.naturalWidth;
+      let canvasHeight = tempImg.naturalHeight;
+
+      if (angle === 90 || angle === 270) {
+        canvasWidth = tempImg.naturalHeight;
+        canvasHeight = tempImg.naturalWidth;
+      }
+
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      ctx.translate(canvasWidth / 2, canvasHeight / 2);
+      ctx.rotate(angle * Math.PI / 180);
+      ctx.drawImage(tempImg, -tempImg.naturalWidth / 2, -tempImg.naturalHeight / 2);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    tempImg.src = imageSrc;
+  });
+}
+
+// Analisa a orientação do texto usando OCR (versão otimizada)
+async function analyzeTextOrientation(imageSrc, fastMode = false) {
+  try {
+    const worker = await initTesseractWorker();
+    
+    const options = {
+      tessedit_pageseg_mode: fastMode ? Tesseract.PSM.SINGLE_BLOCK : Tesseract.PSM.AUTO,
+    };
+    
+    const { data: { text, confidence } } = await worker.recognize(imageSrc, options);
+    
+    // Calcular pontuação otimizada
+    const textLength = text.trim().length;
+    const wordCount = text.trim().split(/\s+/).filter(word => word.length > 2).length;
+    const hasReadableWords = /[a-zA-ZÀ-ÿ]{3,}/.test(text);
+    
+    let score = 0;
+    
+    // Pontuação baseada na confiança do OCR (peso maior)
+    score += (confidence / 100) * 0.6;
+    
+    // Pontuação baseada na quantidade de texto
+    score += Math.min(textLength / 30, 0.25);
+    
+    // Pontuação baseada no número de palavras
+    score += Math.min(wordCount / 3, 0.15);
+    
+    // Bônus para palavras legíveis
+    if (hasReadableWords) {
+      score += 0.2;
+    }
+    
+    return Math.min(score, 1.0);
+    
+  } catch (error) {
+    console.error('Erro na análise OCR:', error);
+    return 0;
+  }
+}
+
+// Rotação automática manual (acionada pelo botão)
+async function autoRotatePhoto(photoId) {
+  const imgElement = document.getElementById(photoId);
+  const currentSrc = imgElement.src;
+  
+  if (!currentSrc || !currentSrc.startsWith('data:')) {
+    alert('Carregue uma imagem primeiro!');
+    return;
+  }
+  
+  // Desabilitar botão durante processamento
+  const button = event.target;
+  button.disabled = true;
+  button.textContent = '⏳';
+  
+  try {
+    await detectAndRotateImage(photoId, currentSrc);
+  } finally {
+    button.disabled = false;
+    button.textContent = '🤖 Auto';
+  }
+}
+
+// Funções de interface
+function showLoading(photoId) {
+  const loadingElement = document.getElementById(`loading${photoId.slice(-1)}`);
+  if (loadingElement) {
+    loadingElement.style.display = 'flex';
+  }
+}
+
+function hideLoading(photoId) {
+  const loadingElement = document.getElementById(`loading${photoId.slice(-1)}`);
+  if (loadingElement) {
+    loadingElement.style.display = 'none';
+  }
+}
+
+function showProcessingStatus(message) {
+  let statusDiv = document.getElementById('processing-status');
+  if (!statusDiv) {
+    statusDiv = document.createElement('div');
+    statusDiv.id = 'processing-status';
+    statusDiv.className = 'processing-status';
+    document.body.appendChild(statusDiv);
+  }
+  statusDiv.textContent = message;
+  statusDiv.classList.add('show');
+}
+
+function hideProcessingStatus() {
+  const statusDiv = document.getElementById('processing-status');
+  if (statusDiv) {
+    statusDiv.classList.remove('show');
+  }
 }
 
 // Abre o input de upload
@@ -277,7 +398,7 @@ function rotatePhoto(photoId) {
   const imgElement = document.getElementById(photoId);
   const currentSrc = imgElement.src;
 
-  if (!currentSrc || (!currentSrc.startsWith('data:') && !currentSrc.includes('googleusercontent'))) {
+  if (!currentSrc || !currentSrc.startsWith('data:')) {
     console.warn('Nenhuma imagem para girar em ' + photoId);
     return;
   }
@@ -286,7 +407,6 @@ function rotatePhoto(photoId) {
   const rotationAngle = photoRotations[photoId];
 
   const tempImg = new Image();
-  tempImg.crossOrigin = 'anonymous';
   tempImg.onload = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -316,30 +436,13 @@ function saveReport() {
   html2canvas(document.querySelector("#captureArea"), {
     scale: 2,
     backgroundColor: "#ffffff",
-    logging: false,
-    useCORS: true,
-    allowTaint: true
+    logging: false
   }).then(canvas => {
     const link = document.createElement('a');
     link.download = 'registro-fotografico.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
-}
-
-// Funções de interface
-function showLoading(photoId) {
-  const loadingElement = document.getElementById(`loading${photoId.slice(-1)}`);
-  if (loadingElement) {
-    loadingElement.style.display = 'flex';
-  }
-}
-
-function hideLoading(photoId) {
-  const loadingElement = document.getElementById(`loading${photoId.slice(-1)}`);
-  if (loadingElement) {
-    loadingElement.style.display = 'none';
-  }
 }
 
 // ========== FUNÇÕES DE CÓPIA DE TEXTO ==========
@@ -444,13 +547,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Inicializar a API do Google após um pequeno delay
+  // Inicializar a API do Google
   setTimeout(() => {
     initGoogleAPI().then(() => {
       console.log('Google API inicializada com sucesso');
     }).catch(error => {
       console.error('Erro ao inicializar Google API:', error);
-      updateStatusMessage('Erro ao conectar com Google', 'error');
     });
   }, 1000);
   
