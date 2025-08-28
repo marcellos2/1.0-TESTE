@@ -137,7 +137,7 @@ body {
   min-width: 140px;
 }
 
-.google-photos-btn, .rotate-btn, .save-btn {
+.upload-btn, .rotate-btn, .auto-rotate-btn, .save-btn {
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -148,15 +148,15 @@ body {
   min-width: 140px;
 }
 
-.google-photos-btn {
-  background: #DB4437;
+.upload-btn {
+  background: #6c8db4;
   color: white;
   padding: 12px 20px;
   font-size: 1em;
 }
 
-.google-photos-btn:hover {
-  background: #C53929;
+.upload-btn:hover {
+  background: #5a7aa3;
   transform: translateY(-1px);
 }
 
@@ -170,6 +170,24 @@ body {
 .rotate-btn:hover {
   background: #ec971f;
   transform: translateY(-1px);
+}
+
+.auto-rotate-btn {
+  background: #17a2b8;
+  color: white;
+  padding: 6px 12px;
+  font-size: 0.8em;
+}
+
+.auto-rotate-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.auto-rotate-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .save-btn {
@@ -197,7 +215,6 @@ body {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
 }
 
 .toggle-container {
@@ -314,41 +331,46 @@ body {
 
 .text-item {
   background: #f8faff;
-  border: 1px solid #b1c4d9;
+  border: 2px solid #b1c4d9;
   border-radius: 8px;
-  padding: 15px;
   margin-bottom: 15px;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.text-item:last-child {
-  margin-bottom: 0;
+.text-item:hover {
+  border-color: #6c8db4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .text-item-header {
+  background: #e9f0fa;
+  padding: 12px 15px;
+  border-bottom: 1px solid #b1c4d9;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
 }
 
 .text-item-title {
   font-weight: bold;
   color: #1e3a5d;
-  font-size: 1.1em;
+  font-size: 1em;
 }
 
 .copy-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   background: #6c8db4;
   color: white;
   border: none;
   border-radius: 4px;
   padding: 6px 12px;
+  font-size: 0.85em;
   cursor: pointer;
-  font-size: 0.9em;
   transition: all 0.3s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .copy-btn:hover {
@@ -356,18 +378,31 @@ body {
   transform: translateY(-1px);
 }
 
+.copy-btn:active {
+  transform: translateY(0);
+}
+
 .copy-btn.copied {
   background: #4CAF50;
+  animation: pulse 0.3s ease;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 .text-content {
-  background: white;
-  border: 1px solid #dbe4f0;
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 0.95em;
+  padding: 15px;
+  color: #2c4a6e;
   line-height: 1.5;
-  color: #2c3e50;
+  font-size: 0.95em;
+  background: white;
+}
+
+.copy-icon {
+  font-size: 0.9em;
 }
 
 /* Notificação de cópia */
@@ -377,38 +412,75 @@ body {
   right: 20px;
   background: #4CAF50;
   color: white;
-  padding: 12px 18px;
+  padding: 12px 20px;
   border-radius: 6px;
   font-size: 0.9em;
   z-index: 1000;
   display: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideInRight 0.3s ease;
 }
 
 .copy-notification.show {
   display: block;
-  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Responsividade */
 @media (max-width: 768px) {
-  .report-content {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .photo-block {
-    width: 100%;
-    max-width: 350px;
-  }
-  
   .controls {
     flex-direction: column;
     align-items: center;
   }
   
   .control-group {
+    min-width: 200px;
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .upload-btn {
+    flex: 2;
+  }
+  
+  .rotate-btn, .auto-rotate-btn {
+    flex: 1;
+    min-width: auto;
+    padding: 6px 8px;
+  }
+  
+  .report-content {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .photo-block {
+    min-width: 90%;
+  }
+
+  /* Responsividade para textos */
+  .text-item-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .copy-btn {
     width: 100%;
-    max-width: 250px;
+    justify-content: center;
+  }
+  
+  .text-content {
+    font-size: 0.9em;
   }
 }
