@@ -17,7 +17,6 @@ const DISCOVERY_DOCS = ['https://photoslibrary.googleapis.com/$discovery/rest?ve
 // Estado da autenticação
 let isGoogleApiLoaded = false;
 let isUserSignedIn = false;
-let gapi_ready = false;
 
 // Inicializa o worker do Tesseract de forma lazy
 async function initTesseractWorker() {
@@ -43,20 +42,18 @@ async function initTesseractWorker() {
 // Inicializa a API do Google
 function initGoogleAPI() {
   return new Promise((resolve, reject) => {
-    if (!window.gapi) {
+    if (typeof gapi === 'undefined') {
       reject(new Error('Google API não carregada'));
       return;
     }
 
-    gapi.load('auth2:client', async () => {
-      try {
-        await gapi.client.init({
-          apiKey: GOOGLE_API_KEY,
-          clientId: GOOGLE_CLIENT_ID,
-          discoveryDocs: DISCOVERY_DOCS,
-          scope: GOOGLE_SCOPES
-        });
-
+    gapi.load('client:auth2', () => {
+      gapi.client.init({
+        apiKey: GOOGLE_API_KEY,
+        clientId: GOOGLE_CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: GOOGLE_SCOPES
+      }).then(() => {
         const authInstance = gapi.auth2.getAuthInstance();
         isUserSignedIn = authInstance.isSignedIn.get();
         
@@ -65,11 +62,11 @@ function initGoogleAPI() {
         
         console.log('Google API inicializada com sucesso');
         resolve();
-      } catch (error) {
+      }).catch(error => {
         console.error('Erro ao inicializar Google API:', error);
         updateStatusMessage('Erro ao conectar com Google', 'error');
         reject(error);
-      }
+      });
     });
   });
 }
@@ -112,6 +109,7 @@ async function handleAuthClick() {
     
     isUserSignedIn = true;
     updateAuthButton();
+    updateStatusMessage('✅ Google Fotos conectado', 'connected');
   } catch (error) {
     console.error('Erro na autenticação:', error);
     updateStatusMessage('Erro na autenticação', 'error');

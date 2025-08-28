@@ -533,13 +533,4 @@ body {
     width: 100%;
     justify-content: center;
   }
-  
-  .text-content {
-    font-size: 0.9em;
-  }
-}
-
-/* Configurações extras para CORS */
-img[crossorigin] {
-  image-rendering: auto;
 }
