@@ -137,7 +137,7 @@ body {
   min-width: 140px;
 }
 
-.upload-btn, .google-photos-btn, .rotate-btn, .auto-rotate-btn, .save-btn {
+.google-photos-btn, .rotate-btn, .save-btn {
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -146,18 +146,6 @@ body {
   font-weight: 500;
   width: 100%;
   min-width: 140px;
-}
-
-.upload-btn {
-  background: #6c8db4;
-  color: white;
-  padding: 12px 20px;
-  font-size: 1em;
-}
-
-.upload-btn:hover {
-  background: #5a7aa3;
-  transform: translateY(-1px);
 }
 
 .google-photos-btn {
@@ -182,24 +170,6 @@ body {
 .rotate-btn:hover {
   background: #ec971f;
   transform: translateY(-1px);
-}
-
-.auto-rotate-btn {
-  background: #17a2b8;
-  color: white;
-  padding: 6px 12px;
-  font-size: 0.8em;
-}
-
-.auto-rotate-btn:hover {
-  background: #138496;
-  transform: translateY(-1px);
-}
-
-.auto-rotate-btn:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-  transform: none;
 }
 
 .save-btn {
