@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>REGISTROS FOTOGRÁFICOS</title>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Área que será capturada -->
+    <div class="report-layout" id="captureArea">
+      <div class="report-header">REGISTROS FOTOGRÁFICOS</div>
+      
+      <div class="report-content">
+        <!-- Bloco 1 -->
+        <div class="photo-block">
+          <div class="block-title">INÍCIO DA INSPEÇÃO<br><span>VÁLVULA NO RECEBIMENTO</span></div>
+          <div class="photo-container">
+            <img id="photo1" class="photo-preview" alt="Foto da inspeção inicial">
+            <div id="loading1" class="loading-overlay">
+              <div class="spinner"></div>
+              <span>Analisando orientação...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco 2 -->
+        <div class="photo-block">
+          <div class="block-title">DURANTE A INSPEÇÃO<br><span>VÁLVULA TRABALHANDO</span></div>
+          <div class="photo-container">
+            <img id="photo2" class="photo-preview" alt="Foto durante a inspeção">
+            <div id="loading2" class="loading-overlay">
+              <div class="spinner"></div>
+              <span>Analisando orientação...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco 3 -->
+        <div class="photo-block">
+          <div class="block-title">TÉRMINO DA INSPEÇÃO<br><span>VÁLVULA PRONTA</span></div>
+          <div class="photo-container">
+            <img id="photo3" class="photo-preview" alt="Foto do término da inspeção">
+            <div id="loading3" class="loading-overlay">
+              <div class="spinner"></div>
+              <span>Analisando orientação...</span>
+            </div>
+          </div>       
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles de upload (fora da área de captura) -->
+    <div class="controls">
+      <input type="file" accept="image/*" id="upload1" onchange="loadPhoto(this, 'photo1')" style="display:none">
+      <input type="file" accept="image/*" id="upload2" onchange="loadPhoto(this, 'photo2')" style="display:none">
+      <input type="file" accept="image/*" id="upload3" onchange="loadPhoto(this, 'photo3')" style="display:none">
+
+      <div class="control-group">
+        <button onclick="triggerUpload(1)" class="upload-btn">Foto Inicial</button>
+        <button onclick="rotatePhoto('photo1')" class="rotate-btn">🔄 Girar</button>
+      </div>
+
+      <div class="control-group">
+        <button onclick="triggerUpload(2)" class="upload-btn">Foto Durante</button>
+        <button onclick="rotatePhoto('photo2')" class="rotate-btn">🔄 Girar</button>
+      </div>
+
+      <div class="control-group">
+        <button onclick="triggerUpload(3)" class="upload-btn">Foto Final</button>
+        <button onclick="rotatePhoto('photo3')" class="rotate-btn">🔄 Girar</button>
+      </div>
+
+      <button onclick="saveReport()" class="save-btn">Salvar Relatório</button>
+    </div>
+  <script src="script.js"></script>
+</body>
+</html>
