@@ -8,6 +8,11 @@ const photoRotations = {
 // Cache do Tesseract worker para melhor performance
 let tesseractWorker = null;
 
+// Configurações da API do Google
+const GOOGLE_API_KEY = 'AIzaSyAQorqgDbL8SkEEKbxArrkUrW90Bo3HElA';
+const GOOGLE_CLIENT_ID = 'S413639391505-ju79cikoccl8n4ke361ibv0dtd9q4iji.apps.googleusercontent.com'; // Você precisa obter isso no Google Cloud Console
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
+
 // Inicializa o worker do Tesseract de forma lazy
 async function initTesseractWorker() {
   if (!tesseractWorker) {
@@ -25,6 +30,111 @@ async function initTesseractWorker() {
     });
   }
   return tesseractWorker;
+}
+
+// ========== INTEGRAÇÃO COM GOOGLE FOTOS ==========
+
+// Inicializa a API do Google
+function initGoogleAPI() {
+  return new Promise((resolve, reject) => {
+    gapi.load('client:auth2', () => {
+      gapi.client.init({
+        apiKey: GOOGLE_API_KEY,
+        clientId: GOOGLE_CLIENT_ID,
+        discoveryDocs: ['https://photoslibrary.googleapis.com/$discovery/rest?version=v1'],
+        scope: GOOGLE_SCOPES
+      }).then(() => {
+        console.log('Google API inicializada');
+        resolve();
+      }).catch(error => {
+        console.error('Erro ao inicializar Google API:', error);
+        reject(error);
+      });
+    });
+  });
+}
+
+// Verifica se o usuário está autenticado
+function isUserAuthenticated() {
+  return gapi.auth2.getAuthInstance().isSignedIn.get();
+}
+
+// Autentica o usuário
+function authenticateUser() {
+  return gapi.auth2.getAuthInstance().signIn();
+}
+
+// Abre o seletor do Google Fotos
+async function triggerGooglePhotos(photoNumber) {
+  try {
+    // Inicializa a API se ainda não foi inicializada
+    if (!gapi.client) {
+      await initGoogleAPI();
+    }
+
+    // Autentica o usuário se necessário
+    if (!isUserAuthenticated()) {
+      await authenticateUser();
+    }
+
+    // Cria e abre o seletor do Google Fotos
+    const googlePhotosPicker = new google.picker.PickerBuilder()
+      .addView(google.picker.ViewId.PHOTOS)
+      .addView(google.picker.ViewId.PHOTO_ALBUMS)
+      .addView(google.picker.ViewId.PHOTO_UPLOAD)
+      .setOAuthToken(gapi.auth.getToken().access_token)
+      .setDeveloperKey(GOOGLE_API_KEY)
+      .setCallback((data) => {
+        if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+          const doc = data[google.picker.Response.DOCUMENTS][0];
+          const photoId = doc[google.picker.Document.ID];
+          loadPhotoFromGoogle(photoId, `photo${photoNumber}`);
+        }
+      })
+      .build();
+    
+    googlePhotosPicker.setVisible(true);
+  } catch (error) {
+    console.error('Erro ao acessar Google Fotos:', error);
+    alert('Erro ao acessar Google Fotos. Verifique o console para mais detalhes.');
+  }
+}
+
+// Carrega uma foto do Google Fotos
+async function loadPhotoFromGoogle(photoId, targetPhotoId) {
+  try {
+    showLoading(targetPhotoId);
+    
+    // Obtém a URL da foto em alta resolução
+    const response = await gapi.client.photoslibrary.mediaItems.get({
+      mediaItemId: photoId
+    });
+    
+    const mediaItem = response.result;
+    const photoUrl = `${mediaItem.baseUrl}=w1600-h1200`; // Tamanho ajustável
+    
+    // Carrega a imagem
+    const imgElement = document.getElementById(targetPhotoId);
+    imgElement.src = photoUrl;
+    
+    // Resetar a rotação ao carregar uma nova foto
+    photoRotations[targetPhotoId] = 0;
+    
+    // Verificar se a rotação automática está habilitada
+    const autoRotateEnabled = document.getElementById('autoRotateToggle');
+    
+    if (autoRotateEnabled && autoRotateEnabled.checked) {
+      // Usar setTimeout para não bloquear a interface
+      setTimeout(() => {
+        detectAndRotateImage(targetPhotoId, photoUrl);
+      }, 100);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar foto do Google:', error);
+    alert('Erro ao carregar foto do Google Fotos.');
+  } finally {
+    hideLoading(targetPhotoId);
+  }
 }
 
 // Carrega as fotos nos respectivos blocos
@@ -438,15 +548,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Pré-carregar o worker do Tesseract em background (opcional)
+  // Inicializar a API do Google
   setTimeout(() => {
-    const autoRotateToggle = document.getElementById('autoRotateToggle');
-    if (autoRotateToggle && autoRotateToggle.checked) {
-      initTesseractWorker().then(() => {
-        console.log('Tesseract worker pré-carregado');
-      });
-    }
-  }, 2000);
+    initGoogleAPI().then(() => {
+      console.log('Google API inicializada com sucesso');
+    }).catch(error => {
+      console.error('Erro ao inicializar Google API:', error);
+    });
+  }, 1000);
   
   console.log('Sistema de registros fotográficos carregado');
   console.log('Sistema de textos para cópia carregado');
