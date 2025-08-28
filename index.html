@@ -5,6 +5,9 @@
   <title>REGISTROS FOTOGRÁFICOS</title>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://apis.google.com/js/platform.js"></script>
+  <script src="https://www.google.com/jsapi"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -52,6 +55,14 @@
       </div>
     </div>
 
+    <!-- Status de conexão do Google -->
+    <div class="google-status" id="googleStatus">
+      <span id="statusText">Conectando ao Google...</span>
+      <button id="authButton" onclick="handleAuthClick()" style="display: none;">
+        Conectar ao Google Fotos
+      </button>
+    </div>
+
     <!-- Controles de upload (fora da área de captura) -->
     <div class="controls">
       <input type="file" accept="image/*" id="upload1" onchange="loadPhoto(this, 'photo1')" style="display:none">
@@ -59,17 +70,20 @@
       <input type="file" accept="image/*" id="upload3" onchange="loadPhoto(this, 'photo3')" style="display:none">
 
       <div class="control-group">
-        <button onclick="triggerUpload(1)" class="upload-btn">Foto Inicial</button>
+        <button onclick="triggerGooglePhotos(1)" class="google-photos-btn">📷 Google Fotos</button>
+        <button onclick="triggerUpload(1)" class="upload-btn-small">📁 Arquivo</button>
         <button onclick="rotatePhoto('photo1')" class="rotate-btn">🔄 Girar</button>
       </div>
 
       <div class="control-group">
-        <button onclick="triggerUpload(2)" class="upload-btn">Foto Durante</button>
+        <button onclick="triggerGooglePhotos(2)" class="google-photos-btn">📷 Google Fotos</button>
+        <button onclick="triggerUpload(2)" class="upload-btn-small">📁 Arquivo</button>
         <button onclick="rotatePhoto('photo2')" class="rotate-btn">🔄 Girar</button>
       </div>
 
       <div class="control-group">
-        <button onclick="triggerUpload(3)" class="upload-btn">Foto Final</button>
+        <button onclick="triggerGooglePhotos(3)" class="google-photos-btn">📷 Google Fotos</button>
+        <button onclick="triggerUpload(3)" class="upload-btn-small">📁 Arquivo</button>
         <button onclick="rotatePhoto('photo3')" class="rotate-btn">🔄 Girar</button>
       </div>
 
